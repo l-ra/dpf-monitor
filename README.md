@@ -2,6 +2,7 @@
 
 Nativní aplikace pro Škoda Superb / VAG EA288 Evo. Kotlin, BLE ELM327, CompanionDeviceManager, `connectedDevice` foreground service, notifikace, perzistentní historie a predikce. Projekt je experimentální; identifikaci VIN a provoz na konkrétním telefonu je nutné ověřit.
 
+* [Technické zadání a akceptační testy](docs/requirements.md)
 * [Architektura](docs/architecture.md)
 * [Detekce regenerace a evidence](docs/detection.md)
 * [Instalace, oprávnění, GitHub Actions](docs/user-guide.md)
