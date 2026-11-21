@@ -55,6 +55,8 @@ class RegenEngine {
     private var alertForUnresolvedTrip = false
     private var resetDistance = false
     private var resetTime = false
+    private var sawPostOffDistance = false
+    private var sawPostOffTime = false
     private var minSootDuring = Double.POSITIVE_INFINITY
     private var startSoot: Double? = null
     private var lastPlausibleTrigger: Double? = null
@@ -76,12 +78,14 @@ class RegenEngine {
         lastTimeBefore = savedTimeBefore
         phase = if (savedPhase in setOf(RegenPhase.ACTIVE, RegenPhase.COOL_DOWN, RegenPhase.UNRESOLVED))
             RegenPhase.UNRESOLVED else savedPhase
-        alertForUnresolvedTrip = phase == RegenPhase.UNRESOLVED
+        alertForUnresolvedTrip = phase == RegenPhase.UNRESOLVED || phase == RegenPhase.INTERRUPTED
         pendingSince = if (phase == RegenPhase.UNRESOLVED) now else 0
     }
 
     fun onConnectionLost(): EngineEvent? {
         if (phase !in setOf(RegenPhase.ACTIVE, RegenPhase.COOL_DOWN)) return null
+        lastDistanceBefore = values["22208D"]?.number ?: lastDistanceBefore
+        lastTimeBefore = values["222089"]?.number ?: lastTimeBefore
         phase = RegenPhase.UNRESOLVED
         alertForUnresolvedTrip = true
         return EngineEvent(EventKind.UNRESOLVED,
@@ -92,7 +96,8 @@ class RegenEngine {
         if (!alertForUnresolvedTrip) return null
         alertForUnresolvedTrip = false
         return EngineEvent(EventKind.NEXT_TRIP_WARNING,
-            "Minulá regenerace nebyla ověřeně dokončena. Kontroluji čítače DPF.")
+            if (phase == RegenPhase.INTERRUPTED) "Předchozí regenerace byla pravděpodobně přerušena."
+            else "Minulá regenerace nebyla ověřeně dokončena. Kontroluji čítače DPF.")
     }
 
     fun consume(sensor: SensorValue): List<EngineEvent> {
@@ -115,12 +120,12 @@ class RegenEngine {
                         if (phase == RegenPhase.COOL_DOWN) {
                             phase = RegenPhase.ACTIVE // temporary state flip; don't notify twice
                         } else {
-                            if (phase != RegenPhase.UNRESOLVED) activeSince = now
-                            if (activeSince <= 0) activeSince = now
+                            val reconnecting = phase == RegenPhase.UNRESOLVED
+                            if (!reconnecting || activeSince <= 0) activeSince = now
                             phase = RegenPhase.ACTIVE
                             minSootDuring = Double.POSITIVE_INFINITY
                             startSoot = values["22208B"]?.number
-                            events += EngineEvent(EventKind.START,
+                            if (!reconnecting) events += EngineEvent(EventKind.START,
                                 "Spuštěna aktivní regenerace DPF.", sound = true)
                         }
                     }
@@ -134,6 +139,8 @@ class RegenEngine {
                         lastTimeBefore = values["222089"]?.number
                         resetDistance = false
                         resetTime = false
+                        sawPostOffDistance = false
+                        sawPostOffTime = false
                     } else if (phase == RegenPhase.UNKNOWN && offStreak >= 2) {
                         phase = RegenPhase.IDLE
                     }
@@ -145,11 +152,13 @@ class RegenEngine {
             "22208B" -> if (phase == RegenPhase.ACTIVE && sensor.number != null)
                 minSootDuring = min(minSootDuring, sensor.number)
             "22208D" -> if (phase in setOf(RegenPhase.COOL_DOWN, RegenPhase.UNRESOLVED)) {
+                sawPostOffDistance = sensor.number != null
                 val before = lastDistanceBefore
                 if (before != null && before >= 10 && sensor.number != null &&
                     sensor.number < 2 && before - sensor.number > 5) resetDistance = true
             }
             "222089" -> if (phase in setOf(RegenPhase.COOL_DOWN, RegenPhase.UNRESOLVED)) {
+                sawPostOffTime = sensor.number != null
                 val before = lastTimeBefore
                 if (before != null && before >= 180 && sensor.number != null &&
                     sensor.number < 45 && before - sensor.number > 120) resetTime = true
@@ -170,7 +179,8 @@ class RegenEngine {
             resetDistance = false
             resetTime = false
             events += EngineEvent(EventKind.COMPLETE, "Regenerace DPF dokončena – oba čítače se vynulovaly.")
-        } else if (phase == RegenPhase.COOL_DOWN && pendingSince > 0 && now - pendingSince >= 90_000) {
+        } else if (phase == RegenPhase.COOL_DOWN && pendingSince > 0 && now - pendingSince >= 90_000 &&
+            sawPostOffDistance && sawPostOffTime) {
             // Observed departure from regeneration with continuing vehicle communication.
             // Do not declare interruption merely because BLE disconnected.
             phase = RegenPhase.INTERRUPTED
