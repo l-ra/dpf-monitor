@@ -32,6 +32,6 @@ class AdapterPresenceService : CompanionDeviceService() {
     }
     private fun onGone(address: String?) {
         if (address != null && address.equals(LocalStore(this).adapterAddress, ignoreCase = true))
-            startService(Intent(this, MonitorService::class.java).setAction(MonitorService.ACTION_STOP))
+            stopService(Intent(this, MonitorService::class.java))
     }
 }
