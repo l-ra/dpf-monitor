@@ -89,7 +89,7 @@ object ObdProtocol {
             }
         }
         if (total > 0) add(assembly, false)
-        return DiagnosticReply(cmd, candidate ?: emptyList(), complete, negative, raw)
+        return DiagnosticReply(cmd, candidate ?: emptyList(), complete, if (candidate == null) negative else null, raw)
     }
 
     fun decode(command: String, raw: String, at: Long): SensorValue? {
