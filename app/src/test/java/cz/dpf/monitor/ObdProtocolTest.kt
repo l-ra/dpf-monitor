@@ -71,7 +71,8 @@ class RegenEngineTest {
         e.consume(sample("018B", t + 1500, flag = RegenFlag.ACTIVE))
         e.consume(sample("018B", t + 6000, flag = RegenFlag.INACTIVE))
         e.consume(sample("018B", t + 7500, flag = RegenFlag.INACTIVE))
-        val result = e.consume(sample("22208D", t + 100000, 181.0))
+        e.consume(sample("22208D", t + 100000, 181.0))
+        val result = e.consume(sample("222089", t + 101000, 20100.0))
         assertEquals(EventKind.INTERRUPT, result.single().kind)
     }
     @Test fun disconnectionIsUnresolvedNotInterrupted() {
