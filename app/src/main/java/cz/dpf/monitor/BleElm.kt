@@ -150,6 +150,26 @@ class BleElm(private val context: Context, private val logger: (String) -> Unit)
                 logger("VIN " + cmd + " failed: " + e.message)
             }
         }
+        // Some ELM327 clones never deliver the consecutive ISO-TP frame unless
+        // the Flow Control TX header and payload are configured explicitly.
+        // This is still a read-only request to the ECU; AT commands configure adapter.
+        try {
+            for (c in listOf("ATSH7E0", "ATCRA7E8", "ATCFC1",
+                "ATFCSH7E0", "ATFCSD300000", "ATFCSM1", "ATSTFF")) {
+                if (!command(c).contains("OK")) error("ELM rejects " + c)
+            }
+            currentHeader = "7E0"
+            val candidate = ObdProtocol.vin(command("22F190", 15_000), "22F190")
+            if (candidate != null) return candidate
+        } catch (e: Exception) {
+            logger("Explicit ISO-TP FC VIN fallback failed: " + e.message)
+        } finally {
+            // Never leave the adapter with manual FC parameters for normal polling.
+            runCatching { command("ATFCSM0") }
+            runCatching { command("ATCRA") }
+            runCatching { command("ATST64") }
+            runCatching { command("ATSH7DF"); currentHeader = "7DF" }
+        }
         return null
     }
     override fun close() {
