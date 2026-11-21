@@ -93,6 +93,7 @@ class MonitorService : Service() {
         store.appendDiagnostic("EVENT " + event.kind + ": " + event.text)
         val channel = if (event.sound) ALARM else EVENTS
         val id = when (event.kind) {
+            EventKind.APPROACHING -> 206
             EventKind.START -> 203
             EventKind.INTERRUPT, EventKind.NEXT_TRIP_WARNING, EventKind.UNRESOLVED -> 204
             EventKind.COMPLETE -> 205
