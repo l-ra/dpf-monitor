@@ -4,7 +4,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 enum class RegenPhase { UNKNOWN, IDLE, APPROACHING, ACTIVE, COOL_DOWN, COMPLETED, INTERRUPTED, UNRESOLVED }
-enum class EventKind { START, COMPLETE, INTERRUPT, UNRESOLVED, NEXT_TRIP_WARNING }
+enum class EventKind { APPROACHING, START, COMPLETE, INTERRUPT, UNRESOLVED, NEXT_TRIP_WARNING }
 data class EngineEvent(val kind: EventKind, val text: String, val sound: Boolean = false)
 
 data class EngineView(
@@ -179,7 +179,9 @@ class RegenEngine {
             resetDistance = false
             resetTime = false
             events += EngineEvent(EventKind.COMPLETE, "Regenerace DPF dokončena – oba čítače se vynulovaly.")
-        } else if (phase == RegenPhase.COOL_DOWN && pendingSince > 0 && now - pendingSince >= 90_000 &&
+        } else if (phase in setOf(RegenPhase.COOL_DOWN, RegenPhase.UNRESOLVED) && pendingSince > 0 &&
+            now - pendingSince >= 90_000 &&
+            (values["018B"]?.flag == RegenFlag.INACTIVE || values["018B"]?.flag == RegenFlag.PASSIVE) &&
             sawPostOffDistance && sawPostOffTime) {
             // Observed departure from regeneration with continuing vehicle communication.
             // Do not declare interruption merely because BLE disconnected.
@@ -187,8 +189,10 @@ class RegenEngine {
             events += EngineEvent(EventKind.INTERRUPT,
                 "Regenerace pravděpodobně přerušena (bez resetu čítačů).")
         }
-        if (phase == RegenPhase.IDLE && (lastPlausibleTrigger ?: 0.0) >= 85.0)
+        if (phase == RegenPhase.IDLE && (lastPlausibleTrigger ?: 0.0) >= 85.0) {
             phase = RegenPhase.APPROACHING
+            events += EngineEvent(EventKind.APPROACHING, "DPF se blíží regeneraci – orientační kritérium alespoň 85 %.")
+        }
         if (phase == RegenPhase.APPROACHING && (lastPlausibleTrigger ?: 0.0) < 75.0)
             phase = RegenPhase.IDLE
         if (phase == RegenPhase.COMPLETED && sensor.command == "018B" &&
