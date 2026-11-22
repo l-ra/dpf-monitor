@@ -556,7 +556,9 @@ class MainActivity : Activity() {
     private fun observe() {
         val addr = store.adapterAddress ?: return
         if (!store.autoEnabled || !hasBluetoothPermissions()) return
-        getSystemService(CompanionDeviceManager::class.java).startObservingDevicePresence(addr)
+        runCatching {
+            getSystemService(CompanionDeviceManager::class.java).startObservingDevicePresence(addr)
+        }.onFailure { store.event("PRESENCE", "Registrace pozorování: " + it.message) }
     }
 
     override fun onActivityResult(code: Int, result: Int, data: Intent?) {
