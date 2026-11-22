@@ -26,3 +26,16 @@ Systém tvoří MainActivity (UI), AdapterPresenceService (Companion Device Mana
 - Některé levné ELM adaptéry vracejí pouze první rámec ISO-TP; pro VIN to nestačí. Aplikace proto může oprávněně odmítnout aktivaci, dokud VIN nelze bezpečně přečíst.
 - Pokud je adaptér stále pod proudem i po vypnutí motoru, samotná přítomnost BLE nemusí vymezovat jednotlivé jízdy. Vyhodnocení jízdy se musí dále doplnit o RPM a ověření napájecího režimu.
 - Data jsou experimentální, pouze read-only. Nejsou náhradou za originální diagnostiku ani pokyny k bezpečné jízdě.
+
+
+## Změny ve verzi 1.0.0
+
+**UI a životní cyklus:** MainActivity vykresluje hlavní dashboard a detailní obrazovku s grafy pomocí Android Views a vlastního TelemetryChart (Canvas). Žádná obrazovka nevlastní BLE spojení. První spuštění vede uživatele systémovým udělením oprávnění, zapnutím Bluetooth a Companion Device Manager výběrem adaptéru; teprve poté MonitorService načte a potvrdí VIN.
+
+**Retence:** TelemetryDatabase je singleton SQLiteOpenHelper s WAL a indexy podle času / (command, time). Zapisuje všechny pokusy o čtení ECU do tabulky samples včetně error/partial, komunikační text do communications a notifikované události do events. Automatické mazání záznamů starších 30 dnů probíhá při otevření databáze, při spuštění aplikace a nejméně jednou za hodinu při aktivním zápisu. Stav motoru, vazba VIN/MAC a aktuální dashboard zůstávají v SharedPreferences nezávisle na retenci analytické historie.
+
+**Grafy:** TelemetryChart je jednoduchý Canvas vykreslovač s barevně odlišenými řadami a dělením os; databázový dotaz seskupuje hodnoty do časových intervalů a zprůměruje je pro požadovaný rozsah 1/7/30 dní. Dotazy probíhají mimo UI thread.
+
+**Export:** MainActivity spouští Android ACTION_CREATE_DOCUMENT a předává přidělený URI do background threadu. TelemetryDatabase exportZip() postupně zapisuje ZIP přímo do uživatelem vybraného OutputStreamu – telemetry.csv, communication.txt, events.csv, README.txt. Soubory se nemusí kopírovat na veřejnou cestu a aplikace nepotřebuje storage permissions. Export obsahuje případné VIN; jde o data lokálního vozidla.
+
+**Release:** build.gradle.kts přebírá verzi z release/version.txt, versionCode je monotonicky odvozený. Nový Versioned Android release workflow po změně verze sestavuje a testuje, vytváří GitHub Release se samostatným, verzovaným APK a SHA-256. Release APK musí být podepsané trvalým keystore v GitHub Secrets; bez něj se zveřejní výhradně označený testovací prerelease.
