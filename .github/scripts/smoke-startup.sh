@@ -35,11 +35,8 @@ adb shell am start -W -n "$ACTIVITY"
 sleep 8
 check_alive "cold start"
 
-# Simulate the foreground monitoring service being launched after pairing.
-# This also forces Android to inflate the new small notification vector icon.
-adb shell am start-foreground-service -n "$PACKAGE/.MonitorService" -a "$PACKAGE.START"
-sleep 3
-check_alive "foreground notification/service"
+# The service is deliberately non-exported. ADB shell must not start it
+# directly; its notification is exercised only through in-app/CDM flows.
 
 # Open the Graphs tab to exercise view recreation.
 size=$(adb shell wm size | head -1 | grep -oE '[0-9]+x[0-9]+' | tail -1)
