@@ -99,33 +99,24 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Android 15 / targetSdk 35 enforces edge-to-edge drawing. Keep the status
-     * icons and gesture indicator visible, but keep actual UI controls outside
-     * the system-bar and camera-cutout areas. All supported devices are API 31+.
+     * Android 15 enforces edge-to-edge. Use the platform's own View
+     * fitSystemWindows pass instead of applying padding manually from a
+     * callback during the first layout/insets dispatch. The latter made
+     * startup fragile on some Android 15 devices.
+     *
+     * The system status bar and gesture/navigation indicator remain visible.
      */
     private fun configureSystemBars() {
-        window.setDecorFitsSystemWindows(false)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-        window.isNavigationBarContrastEnforced = false
-        window.insetsController?.setSystemBarsAppearance(
-            0,
-            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-        )
+        window.statusBarColor = baseColor
+        window.navigationBarColor = baseColor
+        window.decorView.systemUiVisibility =
+            window.decorView.systemUiVisibility and
+                (View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+                 View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR).inv()
     }
 
     private fun applySafeInsets() {
-        // A fresh view is created on tab switch; reattach the listener each time.
-        // Do not consume insets: dialogs and embedded system views may also need them.
-        root.setOnApplyWindowInsetsListener { view, insets ->
-            val safe = insets.getInsets(
-                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
-            )
-            view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
-            insets
-        }
-        root.requestApplyInsets()
+        root.fitsSystemWindows = true
     }
 
     private fun dp(x: Int) = (resources.displayMetrics.density * x).toInt()
