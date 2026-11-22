@@ -28,7 +28,7 @@ import java.util.regex.Pattern
 @Suppress("DEPRECATION")
 @SuppressLint("MissingPermission")
 class MainActivity : Activity() {
-    private val background = Color.rgb(10, 17, 27)
+    private val baseColor = Color.rgb(10, 17, 27)
     private val panel = Color.rgb(19, 33, 48)
     private val elevated = Color.rgb(26, 43, 61)
     private val white = Color.rgb(239, 247, 250)
@@ -67,8 +67,8 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         store = LocalStore(this)
         database = TelemetryDatabase.get(this)
-        window.statusBarColor = background
-        window.navigationBarColor = background
+        window.statusBarColor = baseColor
+        window.navigationBarColor = baseColor
         render()
         database.purgeExpired()
         if (store.adapterAddress == null) handler.postDelayed({
@@ -127,7 +127,7 @@ class MainActivity : Activity() {
     private fun render() {
         values.clear()
         graphs.clear()
-        root = column().apply { setBackgroundColor(background) }
+        root = column().apply { setBackgroundColor(baseColor) }
         val top = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(19), dp(20), dp(16), dp(12))
@@ -155,7 +155,7 @@ class MainActivity : Activity() {
             background = shape(panel)
         }
         fun tab(title: String, selected: Boolean, choose: () -> Unit) {
-            val b = label(title, 15f, if (selected) background else muted, true).apply {
+            val b = label(title, 15f, if (selected) baseColor else muted, true).apply {
                 gravity = Gravity.CENTER
                 background = shape(if (selected) green else panel, 12)
                 setOnClickListener { choose() }
@@ -255,7 +255,7 @@ class MainActivity : Activity() {
         select.addView(label("30denní retence, lokální měření bez cloudové služby.", 13f, muted))
         val interval = LinearLayout(this).apply { setPadding(0, dp(11), 0, 0) }
         for ((n, title) in listOf(1 to "24 h", 7 to "7 dnů", 30 to "30 dnů")) {
-            interval.addView(label(title, 14f, if (n == days) background else white, true).apply {
+            interval.addView(label(title, 14f, if (n == days) baseColor else white, true).apply {
                 gravity = Gravity.CENTER
                 background = shape(if (n == days) green else elevated, 10)
                 setOnClickListener { days = n; lastGraphTime = 0; render() }
@@ -402,7 +402,7 @@ class MainActivity : Activity() {
         popup.menu.add("O aplikaci")
         popup.setOnMenuItemClickListener { item ->
             when {
-                item.title.startsWith("Export") -> requestExport()
+                item.title.toString().startsWith("Export") -> requestExport()
                 item.title.startsWith("Automatické") -> {
                     store.autoEnabled = !store.autoEnabled
                     if (store.autoEnabled) {
