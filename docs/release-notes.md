@@ -1,21 +1,18 @@
-# DPF Monitor 1.0.1 — patch release
+# DPF Monitor 1.0.2 — oprava pádu po spuštění
 
-## Opravy
+## Důvod opravné verze
 
-- Vlastní adaptivní ikona aplikace: stylizovaný filtr DPF a šipka regenerace, kompatibilní s kruhovým i jinak maskovaným launcherem. Android 13+ může použít monochromatickou ikonku v barevném motivu.
-- Vlastní jednobarevná ikona notifikací namísto výchozí výstražné ikonky Androidu.
-- Android 15 / SDK 35: dashboard a spodní navigační tlačítka respektují insets systémové stavové lišty, oblasti výřezu fotoaparátu a spodního systémového navigačního panelu (gesta i tlačítka).
-- Správný kontrast systémových ikon na tmavém pozadí v režimu edge-to-edge.
-- Číslo verze na obrazovce a v názvu exportu se odvozuje z verze skutečně nainstalovaného APK.
+Po instalaci 1.0.1 byl na skutečném telefonu hlášen okamžitý pád aplikace při spuštění. Bez stack trace z telefonu není přesná výjimka dosud prokázána. Rozdíl proti 1.0.0 byl omezen zejména na nové adaptivní ikony a vlastní zpracování okrajů obrazovky Androidu 15. V této verzi je nová ručně řízená obsluha WindowInsets odstraněna.
 
-## Kompatibilita a data
+## Změny
 
-- Pouze UI a grafické prostředky; diagnostické PID/DID, stavový automat a BLE protokol se nemění.
-- Zůstává zachován balíček cz.dpf.monitor, podepisovací klíč, SQLite historie (30 dnů), vazba adaptéru a VIN.
-- Aktualizace 1.0.0 → 1.0.1 má zachovat data bez nové konfigurace.
+- Systémové okraje a oblast gest nyní zpracovává přímo platformní `fitsSystemWindows` na kořenovém View místo vlastního `setOnApplyWindowInsetsListener`. Nepřepisujeme padding uvnitř insets callbacku během prvního vykreslení.
+- Zůstává nová adaptivní ikona a monochromatická notifikační ikona.
+- GitHub Actions navíc instaluje debug APK v emulátoru Androidu 15 a kontroluje úspěšné otevření hlavní obrazovky, přepnutí na grafy a opětovné otevření aplikace. Release se nesmí publikovat, pokud tento smoke test neprojde.
+- Beze změny zůstávají VIN a BLE vazba, databáze, 30denní retence, detekce regenerace a podepisovací klíč.
 
-## Ověření
+## Ověření v telefonu
 
-- GitHub Actions build Android APK a JUnit testy.
-- Doporučený terénní test na Androidu 15: kontrola horní stavové lišty a spodního indikátoru gest při přepínání Přehled / Grafy, otočení telefonu a otevření nabídky nastavení.
-- Skutečné rozmístění na konkrétním telefonu po instalaci zatím nelze ověřit vzdáleně.
+Po instalaci `dpf-monitor-v1.0.2-release.apk` přes verzi 1.0.1 zkontrolovat start, přepínání Přehled/Grafy, zobrazení stavové lišty a spodního indikátoru gest. Pokud pád přetrvá, potřebujeme přesný AndroidRuntime stack trace z `adb logcat`; emulátor nedokáže simulovat každou variantu Android ROM výrobce telefonu.
+
+Oprava je preventivní podle rozdílů 1.0.0 a 1.0.1, nikoli potvrzení konkrétní příčiny na fyzickém zařízení.
