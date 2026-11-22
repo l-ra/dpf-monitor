@@ -18,7 +18,7 @@ class AdapterPresenceService : CompanionDeviceService() {
     private fun onPresent(address: String?) {
         if (address == null || !address.equals(LocalStore(this).adapterAddress, ignoreCase = true)) return
         try {
-            MonitorService.start(this)
+            MonitorService.start(this, automatic = true)
         } catch (e: Exception) {
             LocalStore(this).event("BACKGROUND_START_FAILED",
                 "Automatický start služby zamítnut: " + e.message)
