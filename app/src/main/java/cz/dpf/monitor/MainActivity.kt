@@ -404,7 +404,7 @@ class MainActivity : Activity() {
         popup.setOnMenuItemClickListener { item ->
             when {
                 item.title.toString().startsWith("Export") -> requestExport()
-                item.title.startsWith("Automatické") -> {
+                item.title.toString().startsWith("Automatické") -> {
                     store.autoEnabled = !store.autoEnabled
                     if (store.autoEnabled) {
                         runCatching { observe(); MonitorService.start(this) }
@@ -421,10 +421,10 @@ class MainActivity : Activity() {
                     toast(if (store.autoEnabled) "Automatické sledování zapnuto" else
                         "Automatické sledování vypnuto")
                 }
-                item.title.startsWith("Znovu") -> runCatching { MonitorService.start(this) }
+                item.title.toString().startsWith("Znovu") -> runCatching { MonitorService.start(this) }
                     .onFailure { toast("Spojení: " + it.message) }
-                item.title.startsWith("Změnit") -> unpair()
-                item.title.startsWith("Oprávnění") -> startActivity(
+                item.title.toString().startsWith("Změnit") -> unpair()
+                item.title.toString().startsWith("Oprávnění") -> startActivity(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         android.net.Uri.parse("package:" + packageName)))
                 else -> AlertDialog.Builder(this).setTitle("DPF Monitor v1.0.0")
