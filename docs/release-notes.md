@@ -1,21 +1,21 @@
-# DPF Monitor 1.0.0
+# DPF Monitor 1.0.1 — patch release
 
-První nativní Android verze pro průběžné sledování regenerace DPF v kontextu konkrétního BLE ELM327 adaptéru a vozidla.
+## Opravy
 
-## Hlavní změny
+- Vlastní adaptivní ikona aplikace: stylizovaný filtr DPF a šipka regenerace, kompatibilní s kruhovým i jinak maskovaným launcherem. Android 13+ může použít monochromatickou ikonku v barevném motivu.
+- Vlastní jednobarevná ikona notifikací namísto výchozí výstražné ikonky Androidu.
+- Android 15 / SDK 35: dashboard a spodní navigační tlačítka respektují insets systémové stavové lišty, oblasti výřezu fotoaparátu a spodního systémového navigačního panelu (gesta i tlačítka).
+- Správný kontrast systémových ikon na tmavém pozadí v režimu edge-to-edge.
+- Číslo verze na obrazovce a v názvu exportu se odvozuje z verze skutečně nainstalovaného APK.
 
-- Automatické první nastavení včetně systémových Bluetooth oprávnění, volby jediného adaptéru a ověření kompletního VIN z ECU.
-- Automatické sledování při příštích jízdách pomocí Companion Device Manager, foreground service typu connectedDevice a obnovení sledování po restartu telefonu či aktualizaci aplikace. Dosažitelná spolehlivost závisí na Androidu, BLE adaptéru a nastavení telefonu.
-- Přehledná hlavní obrazovka: stav DPF, normalizované kritérium regenerace, vzdálenost/čas od poslední regenerace, saze, teploty, délka aktivní regenerace a orientační čas do dokončení či dalšího spuštění.
-- Obrazovka Grafy: vývoj teplot, sazí, kritéria, vzdálenosti a délky regenerace, interval 24 h / 7 dní / 30 dní.
-- Automatická notifikace blížící se regenerace, hlasitý alarm začátku, potvrzení dokončení z resetu čítačů a upozornění na neověřenou či pravděpodobně přerušenou regeneraci.
-- Trvalá lokální SQLite historie měření a celé komunikace ELM327, retence 30 dnů, export jediného ZIP pomocí Android Storage Access Framework (telemetry.csv, events.csv, communication.txt).
-- Dokumentovaná interpretace PID/DID a testy nad zaznamenanou jízdou s dokončenou regenerací.
+## Kompatibilita a data
 
-## Důležitá omezení
+- Pouze UI a grafické prostředky; diagnostické PID/DID, stavový automat a BLE protokol se nemění.
+- Zůstává zachován balíček cz.dpf.monitor, podepisovací klíč, SQLite historie (30 dnů), vazba adaptéru a VIN.
+- Aktualizace 1.0.0 → 1.0.1 má zachovat data bez nové konfigurace.
 
-Aplikace je **experimentální diagnostický nástroj**, ne certifikovaná součást vozidla. Úspěšné přečtení VIN a provoz při zamčeném telefonu po restartu je nutné ověřit na konkrétním ELM adaptéru a telefonu. Levné ELM327 adaptéry mohou vracet neúplné ISO-TP odpovědi a pak bezpečné ověření VIN selže. Bez ověřeného VIN se monitor nespustí. Po prvním použití doporučujeme ověřit, že telefon povoluje aplikaci neomezenou aktivitu na pozadí a upozornění.
+## Ověření
 
-Pokud GitHub Actions nemá nahraný stabilní release keystore, vydá se **testovací debug APK**, označený jako prerelease, s přímým .apk souborem. Aktualizace takového APK může vyžadovat přeinstalování kvůli podpisu. Pro stabilní aktualizace nastavte čtyři Android signing secrets.
-
-Data diagnostiky mohou obsahovat VIN a přesné časy jízd. Exportované ZIP soubory sdílejte uvážlivě.
+- GitHub Actions build Android APK a JUnit testy.
+- Doporučený terénní test na Androidu 15: kontrola horní stavové lišty a spodního indikátoru gest při přepínání Přehled / Grafy, otočení telefonu a otevření nabídky nastavení.
+- Skutečné rozmístění na konkrétním telefonu po instalaci zatím nelze ověřit vzdáleně.
