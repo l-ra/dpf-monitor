@@ -85,7 +85,7 @@ class MonitorService : Service() {
         val click = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Builder(this, channel)
-            .setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setSmallIcon(R.drawable.ic_dpf_notification)
             .setContentTitle(title).setContentText(body)
             .setStyle(Notification.BigTextStyle().bigText(body))
             .setContentIntent(click).setAutoCancel(channel != STATUS)
