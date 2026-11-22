@@ -14,6 +14,8 @@ import android.os.*
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.*
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -68,8 +70,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         store = LocalStore(this)
         database = TelemetryDatabase.get(this)
-        window.statusBarColor = baseColor
-        window.navigationBarColor = baseColor
+        configureSystemBars()
         render()
         database.purgeExpired()
         if (store.adapterAddress == null) handler.postDelayed({
@@ -95,6 +96,36 @@ class MainActivity : Activity() {
     override fun onPause() {
         handler.removeCallbacks(ticker)
         super.onPause()
+    }
+
+    /**
+     * Android 15 / targetSdk 35 enforces edge-to-edge drawing. Keep the status
+     * icons and gesture indicator visible, but keep actual UI controls outside
+     * the system-bar and camera-cutout areas. All supported devices are API 31+.
+     */
+    private fun configureSystemBars() {
+        window.setDecorFitsSystemWindows(false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        window.isNavigationBarContrastEnforced = false
+        window.insetsController?.setSystemBarsAppearance(
+            0,
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        )
+    }
+
+    private fun applySafeInsets() {
+        // A fresh view is created on tab switch; reattach the listener each time.
+        // Do not consume insets: dialogs and embedded system views may also need them.
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val safe = insets.getInsets(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+            )
+            view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+            insets
+        }
+        root.requestApplyInsets()
     }
 
     private fun dp(x: Int) = (resources.displayMetrics.density * x).toInt()
@@ -136,7 +167,7 @@ class MainActivity : Activity() {
         val name = column().apply {
             addView(label("DPF MONITOR", 26f, white, true))
         }
-        subtitle = label("1.0.0  •  PŘIPRAVUJI", 11f, muted)
+        subtitle = label(BuildConfig.VERSION_NAME + "  •  PŘIPRAVUJI", 11f, muted)
         name.addView(subtitle)
         top.addView(name, LinearLayout.LayoutParams(0, -2, 1f))
         val menu = label("☰", 27f, white, true).apply {
@@ -167,6 +198,7 @@ class MainActivity : Activity() {
         tab("▥  Grafy", !dashboard) { dashboard = false; lastGraphTime = 0; render() }
         root.addView(tabs)
         setContentView(root)
+        applySafeInsets()
         if (dashboard) drawDashboard() else drawDetails()
         update()
     }
@@ -307,8 +339,8 @@ class MainActivity : Activity() {
         val age = if (sampleAt > 0) (System.currentTimeMillis() - sampleAt).coerceAtLeast(0) / 1000
             else Long.MAX_VALUE
         val stale = age > 18
-        subtitle.text = if (store.setupComplete) "1.0.0  •  VOZIDLO OVĚŘENO"
-            else "1.0.0  •  ČEKÁ NA NASTAVENÍ"
+        subtitle.text = if (store.setupComplete) BuildConfig.VERSION_NAME + "  •  VOZIDLO OVĚŘENO"
+            else BuildConfig.VERSION_NAME + "  •  ČEKÁ NA NASTAVENÍ"
         if (dashboard) {
             val phase = state.optString("phase", "UNKNOWN")
             val pair = when {
@@ -427,7 +459,7 @@ class MainActivity : Activity() {
                 item.title.toString().startsWith("Oprávnění") -> startActivity(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         android.net.Uri.parse("package:" + packageName)))
-                else -> AlertDialog.Builder(this).setTitle("DPF Monitor v1.0.0")
+                else -> AlertDialog.Builder(this).setTitle("DPF Monitor v" + BuildConfig.VERSION_NAME)
                     .setMessage("Data zůstávají v telefonu, automaticky se mažou po 30 dnech. Diagnostika je experimentální.")
                     .setPositiveButton("OK", null).show()
             }
@@ -458,7 +490,7 @@ class MainActivity : Activity() {
     }
 
     private fun requestExport() {
-        val file = "dpf-monitor-1.0.0-" +
+        val file = "dpf-monitor-" + BuildConfig.VERSION_NAME + "-" +
             SimpleDateFormat("yyyyMMdd-HHmm", Locale.ROOT).format(Date()) + ".zip"
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
