@@ -47,3 +47,14 @@ I. OEM bateriové restrikce: kvalifikovat spolehlivost na konkrétním modelu; n
 ## Stav projektu
 
 První implementace a unit tests jsou v repozitáři. **Bod F-02, F-03, F-04, F-07 a F-09 vyžadují skutečný Android/OBD provozní test.** Zachycené webové logy neobsahují úplnou odpověď VIN a prokazují problematický vícerámcový ISO-TP transport levného ELM327, proto nelze funkční identifikaci ECU zatím považovat za ověřenou.
+
+
+## Dodatky 1.0.0
+
+- **F-15 Dashboard:** na první obrazovce jednoznačný stav regenerace, normalizované kritérium, km/čas od poslední regenerace, saze, teploty, uplynulá doba a ETA obou změn; neaktuální měření musí být viditelně označená. Technické volby dostupné přes ☰.
+- **F-16 Grafy:** nezávislá obrazovka s grafy za 24 hodin / 7 dní / 30 dní a posledními událostmi. Kreslení prostřednictvím lokální databáze, bez serveru.
+- **F-17 Retence:** lokální trvalá SQLite evidence všech diagnostických hodnot, chyb a kompletní komunikace ELM327, s časovým limitem 30 dní. Export ZIP pomocí Storage Access Framework, který zahrnuje telemetry.csv, communication.txt a events.csv. Export může obsahovat VIN.
+- **F-18 Release:** MAJOR.MINOR.PATCH v release/version.txt; CI sestaví a otestuje APK a nahraje jej přímo mezi GitHub Release Assets pod verzovaným názvem. Actions Artifacts samotné GitHub poskytuje jako ZIP; release assets nikoli. Stabilní aktualizace vyžaduje release signing secrets.
+- **F-19 Automatika:** po prvním systémovém přiřazení adaptéru a ověření VIN aplikace registruje Companion Device Presence, obnoví registraci po restartu a aktualizaci a foreground service pracuje bez otevřené Activity. Spolehlivost vyžaduje ověření podle výrobce telefonu a napájení adaptéru.
+
+Provozní akceptační testy A–I stále zůstávají nutné před označením aplikace za terénně ověřenou. Verze 1.0.0 vyjadřuje sestavený funkční základ, nikoli certifikovanou diagnostiku.
