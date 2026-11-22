@@ -1,17 +1,32 @@
-# DPF Monitor (Android)
+# DPF Monitor – Android
 
-Nativní aplikace pro Škoda Superb / VAG EA288 Evo. Kotlin, BLE ELM327, CompanionDeviceManager, `connectedDevice` foreground service, notifikace, perzistentní historie a predikce. Projekt je experimentální; identifikaci VIN a provoz na konkrétním telefonu je nutné ověřit.
+Nativní monitor DPF pro Škoda Superb EA288 Evo přes přiřazený BLE ELM327 adaptér. Kotlin, Companion Device Manager, foreground service, lokální SQLite, notifikace a grafy.
 
-* [Technické zadání a akceptační testy](docs/requirements.md)
-* [Architektura](docs/architecture.md)
-* [Detekce regenerace a evidence](docs/detection.md)
-* [Instalace, oprávnění, GitHub Actions](docs/user-guide.md)
-* [Datové podklady](data/README.md)
+## Instalace a nastavení
 
-## Sestavení
+APK stáhni přímo ze stránky [GitHub Releases](https://github.com/l-ra/dpf-monitor/releases). Při prvním otevření aplikace automaticky požádá o Bluetooth oprávnění, případně oznámení, zapnutí Bluetooth a výběr jediného adaptéru OBDII. Po načtení a ověření úplného VIN z ECU naváže adaptér k automobilu. Další jízdy má sledovat automaticky i při zamčeném telefonu, pokud to Android a režim baterie umožní.
 
-Workflow [Android APK](.github/workflows/android.yml) při každém push do `main` sestaví debug APK a provede jednotkové testy. Stažení: **Actions → Android APK → poslední úspěšný běh → Artifacts → dpf-monitor-debug**. Debug sestavení je podepsáno dočasným debug klíčem runneru (nová instalace může vyžadovat odinstalování předchozího APK). Pro dlouhodobé aktualizace nastavte stabilní release signing secrets podle [návodu](docs/user-guide.md).
+Hlavní obrazovka zobrazuje stav DPF, kritérium regenerace, km a čas od poslední regenerace, saze, teploty, délku aktivní fáze a orientační ETA. Obrazovka **Grafy** zobrazuje pět časových řad za 24 hodin, 7 nebo 30 dní. Pokročilé funkce jsou v nabídce ☰.
+
+## GitHub Actions a přímé stažení APK
+
+Verzi určuje soubor [release/version.txt](release/version.txt) (MAJOR.MINOR.PATCH). Jeho změna na main spustí workflow [Versioned Android release](.github/workflows/release.yml). To provede testy, sestaví APK a vytvoří GitHub Release s **přímo stažitelným APK v názvu dpf-monitor-vX.Y.Z-release.apk**; nejde o ZIP. Pokud nejsou nakonfigurována čtyři signing secrets, vydá se testovací prerelease s APK pojmenovaným dpf-monitor-vX.Y.Z-debug.apk.
+
+Běžná CI workflow Android APK vytváří debug APK, ale jejich Actions Artifacts se stahují ve formátu ZIP (vlastnost GitHub Actions). Pro přímé APK použij GitHub Releases.
+
+## Data a export
+
+Veškerá měření, chyby, komunikace ELM327 i události se ukládají do soukromé SQLite databáze. Retence je 30 dní. ☰ → **Export diagnostiky · 30 dnů** uloží jeden ZIP do místa vybraného systémovým dialogem Androidu. Obsah: telemetry.csv, communication.txt, events.csv, README.txt. Archiv může obsahovat VIN a přesné časové údaje. Žádný cloud ani backend.
+
+## Dokumentace
+
+- [Technické zadání](docs/requirements.md)
+- [Architektura](docs/architecture.md)
+- [Detekce regenerace](docs/detection.md)
+- [Uživatelský návod a podpis APK](docs/user-guide.md)
+- [Podkladová jízda 2026-11-21](data/README.md)
+- [Release notes](docs/release-notes.md)
 
 ## Omezení
 
-Aplikace smí pouze číst. Nesmí se používat jako náhrada přístrojového panelu. Data z reálné regenerace 2026-11-21 podporují konkrétní DIDs; adapter ELM327 v2.1 stále vrací neúplný ISO-TP rámec 018B. Detekce využívá přijatý první rámec se sníženou jistotou a nezávislé potvrzení resetu čítačů. Android může proces zastavit, OEM omezení baterie mohou blokovat automatické spuštění. Bez úspěšného načtení VIN aplikace vozidlo nepřiřadí.
+Aplikace je experimentální a používá pouze čtecí diagnostiku. Některé ELM327 adaptéry nedokončí vícerámcové ISO-TP odpovědi; bez ověřeného VIN se monitoring z bezpečnostních důvodů neaktivuje. Android ani Companion Device Manager negarantují absolutní spolehlivost na pozadí, zejména při omezeních výrobce nebo vypnutí Bluetooth. Odhady regenerace nejsou doporučením k řízení vozidla.
