@@ -13,6 +13,7 @@ val computedCode = parts[0] * 10000 + parts[1] * 100 + parts[2]
 android {
     namespace = "cz.dpf.monitor"
     compileSdk = 35
+    buildFeatures { buildConfig = true }
     defaultConfig {
         applicationId = "cz.dpf.monitor"
         minSdk = 31
