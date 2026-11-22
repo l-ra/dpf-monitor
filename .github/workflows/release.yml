@@ -1,0 +1,92 @@
+name: Versioned Android release
+on:
+  push:
+    branches: [main]
+    paths: [release/version.txt]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: dpf-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version check
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(tr -d '\r\n' < release/version.txt)"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]{1,2}\.[0-9]{1,2}$ ]]; then echo "Invalid version"; exit 1; fi
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Release already exists; increase version.txt"
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        shell: bash
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f -print -quit)
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Tests and debug APK
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Versioned APK
+        id: apk
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          mkdir -p dist
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/release.jks"
+            chmod 600 "$GITHUB_WORKSPACE/release.jks"
+            export ANDROID_KEYSTORE_FILE="$GITHUB_WORKSPACE/release.jks"
+            gradle --no-daemon :app:assembleRelease
+            FILE="dpf-monitor-v$VERSION-release.apk"
+            cp app/build/outputs/apk/release/app-release.apk "dist/$FILE"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            FILE="dpf-monitor-v$VERSION-debug.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "dist/$FILE"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "filename=$FILE" >> "$GITHUB_OUTPUT"
+          (cd dist && sha256sum "$FILE" > "$FILE.sha256")
+          test -s "dist/$FILE"
+      - name: Publish raw APK as a GitHub Release asset
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+          TAG: ${{ steps.version.outputs.tag }}
+          APK: ${{ steps.apk.outputs.filename }}
+          PRERELEASE: ${{ steps.apk.outputs.prerelease }}
+        run: |
+          cp docs/release-notes.md dist/notes.md
+          if [[ "$PRERELEASE" == "true" ]]; then
+            echo "" >> dist/notes.md
+            echo "TESTOVACÍ PODPIS: Bez release keystore je APK podepsané dočasným debug klíčem. Aktualizace vyžadují kompatibilní stabilní podpis." >> dist/notes.md
+            gh release create "$TAG" "dist/$APK" "dist/$APK.sha256" --title "DPF Monitor $VERSION" --target "$GITHUB_SHA" --notes-file dist/notes.md --prerelease
+          else
+            gh release create "$TAG" "dist/$APK" "dist/$APK.sha256" --title "DPF Monitor $VERSION" --target "$GITHUB_SHA" --notes-file dist/notes.md
+          fi
+          printf '### Přímé APK\n\n[Stáhnout %s](https://github.com/%s/releases/download/%s/%s)\n\n' "$APK" "$GITHUB_REPOSITORY" "$TAG" "$APK" >> "$GITHUB_STEP_SUMMARY"
