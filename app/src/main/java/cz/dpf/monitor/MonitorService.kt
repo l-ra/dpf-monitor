@@ -26,13 +26,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 class MonitorService : Service() {
     companion object {
         const val ACTION_START = "cz.dpf.monitor.START"
+        const val ACTION_AUTO = "cz.dpf.monitor.AUTO"
         const val ACTION_STOP = "cz.dpf.monitor.STOP"
         const val STATUS = "monitor_status"
         const val EVENTS = "monitor_events"
         const val ALARM = "monitor_alarm"
         const val SERVICE_ID = 201
-        fun start(context: Context) {
-            val i = Intent(context, MonitorService::class.java).setAction(ACTION_START)
+        fun start(context: Context, automatic: Boolean = false) {
+            val i = Intent(context, MonitorService::class.java).setAction(if (automatic) ACTION_AUTO else ACTION_START)
             context.startForegroundService(i)
         }
     }
@@ -66,6 +67,9 @@ class MonitorService : Service() {
             worker?.interrupt()
             stopSelf()
             return START_NOT_STICKY
+        }
+        if (intent?.action == ACTION_AUTO && !LocalStore(this).autoEnabled) {
+            stopSelf(); return START_NOT_STICKY
         }
         val note = statusNotification("Připojuji se k adaptéru OBDII")
         if (Build.VERSION.SDK_INT >= 29)
@@ -139,6 +143,8 @@ class MonitorService : Service() {
 
     private fun monitorLoop() {
         val engine = RegenEngine()
+        val telemetry = TelemetryDatabase.get(this)
+        telemetry.purgeExpired()
         store.restore(engine, System.currentTimeMillis())
         var backoff = 4000L
         var diagnosticFailures = 0
@@ -173,6 +179,7 @@ class MonitorService : Service() {
                         store.event("VIN_MISMATCH", "Jiné vozidlo. Sledování zastaveno.")
                         break
                     }
+                    store.setupComplete = true
                     engine.onTripVerified()?.let(::inform)
                     diagnosticFailures = 0
                     backoff = 4000L
@@ -188,13 +195,17 @@ class MonitorService : Service() {
                         for (cmd in cmds) {
                             if (!running.get()) break
                             val raw = client.read(cmd, if (cmd == "018B") "7DF" else "7E0")
-                            val obs = ObdProtocol.decode(cmd, raw, System.currentTimeMillis())
+                            val timestamp = System.currentTimeMillis()
+                            val obs = ObdProtocol.decode(cmd, raw, timestamp)
+                            telemetry.recordSample(store.vin, cmd, raw, obs, timestamp)
                             if (obs == null) {
                                 diagnosticFailures++
                                 if (diagnosticFailures == 4) store.event("ECU", "ECU momentálně neodpovídá.")
                             } else {
                                 diagnosticFailures = 0
-                                engine.consume(obs).forEach(::inform)
+                                val events = engine.consume(obs)
+                                events.forEach(::inform)
+                                if (events.isNotEmpty()) publish(engine, true)
                             }
                             if (cmd != "018B") lastPoll[cmd] = System.currentTimeMillis()
                         }
@@ -221,6 +232,7 @@ class MonitorService : Service() {
                 }
             }
         } finally {
+            engine.onConnectionLost()?.let(::inform)
             publish(engine, true)
             running.set(false)
             stopSelf()
