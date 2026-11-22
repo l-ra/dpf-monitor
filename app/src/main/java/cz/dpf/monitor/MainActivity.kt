@@ -51,6 +51,7 @@ class MainActivity : Activity() {
     private var firstWizardTriggered = false
     private var chooserActive = false
     private var chooserOpened = false
+    private var notificationRequested = false
     private val PAIR = 91
     private val ENABLE_BT = 92
     private val EXPORT = 93
@@ -492,6 +493,16 @@ class MainActivity : Activity() {
             requestPermissions(required.toTypedArray(), PERMISSIONS)
             return
         }
+        if (Build.VERSION.SDK_INT >= 33 && !notificationRequested &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notificationRequested = true
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), PERMISSIONS)
+            return
+        }
+        proceedBluetooth()
+    }
+
+    private fun proceedBluetooth() {
         val bt = getSystemService(BluetoothManager::class.java).adapter
         if (bt == null) { toast("Bluetooth není dostupné"); return }
         if (!bt.isEnabled) {
