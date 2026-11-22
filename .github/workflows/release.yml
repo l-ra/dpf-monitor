@@ -50,15 +50,20 @@ jobs:
           gradle-version: '8.11.1'
       - name: Tests and debug APK
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
-      - name: Enable KVM acceleration if supported by runner
+      - name: Detect hardware-accelerated Android emulator availability
+        id: kvm
         run: |
           if [ -e /dev/kvm ]; then
-            sudo chmod a+rw /dev/kvm
-            ls -l /dev/kvm
+            sudo chmod a+rw /dev/kvm || true
+          fi
+          if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::No /dev/kvm; emulator may be slow"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::KVM unavailable; skipping Android runtime smoke test"
           fi
       - name: Android 15 emulator startup smoke test
+        if: steps.kvm.outputs.available == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
