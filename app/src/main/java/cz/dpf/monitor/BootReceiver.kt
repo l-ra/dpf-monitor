@@ -10,7 +10,9 @@ import android.content.Intent
 @SuppressLint("MissingPermission")
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (intent?.action != Intent.ACTION_BOOT_COMPLETED &&
+            intent?.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        if (!LocalStore(context).autoEnabled) return
         val mac = LocalStore(context).adapterAddress ?: return
         try {
             val manager = context.getSystemService(CompanionDeviceManager::class.java)
