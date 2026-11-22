@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.os.SystemClock
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
@@ -86,7 +87,13 @@ class BleElm(private val context: Context, private val logger: (String) -> Unit)
         failure = null
         ready = CountDownLatch(1)
         val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
-        val device = adapter.getRemoteDevice(address)
+        // Android BluetoothAdapter accepts only uppercase hexadecimal MAC addresses.
+        // CompanionDeviceManager can return lowercase strings; normalize at the API boundary.
+        val normalizedAddress = address.trim().uppercase(Locale.ROOT)
+        require(BluetoothAdapter.checkBluetoothAddress(normalizedAddress)) {
+            "Invalid Bluetooth MAC address: " + address
+        }
+        val device = adapter.getRemoteDevice(normalizedAddress)
         gatt = device.connectGatt(context, false, cb, BluetoothDevice.TRANSPORT_LE)
         if (!ready.await(15, TimeUnit.SECONDS) || !connected || failure != null || tx == null)
             throw IllegalStateException("BLE connection failed: " + (failure ?: "timeout"))

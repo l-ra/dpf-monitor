@@ -3,6 +3,7 @@ package cz.dpf.monitor
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.*
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.*
 import android.content.pm.PackageManager
@@ -13,6 +14,7 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -144,6 +146,12 @@ class MonitorService : Service() {
             while (running.get()) {
                 val mac = store.adapterAddress
                 if (mac == null) { store.appendDiagnostic("No paired adapter"); break }
+                if (!BluetoothAdapter.checkBluetoothAddress(mac.trim().uppercase(Locale.ROOT))) {
+                    store.event("ADAPTER_ADDRESS_INVALID",
+                        "Neplatná Bluetooth adresa adaptéru. Zrušte vazbu a přiřaďte adaptér znovu.")
+                    store.appendDiagnostic("Invalid BLE adapter address; stopping reconnect loop")
+                    break
+                }
                 if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                     store.appendDiagnostic("Missing BLUETOOTH_CONNECT permission"); break
                 }
