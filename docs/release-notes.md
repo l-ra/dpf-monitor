@@ -8,7 +8,7 @@ Po instalaci 1.0.1 byl na skutečném telefonu hlášen okamžitý pád aplikace
 
 - Systémové okraje a oblast gest nyní zpracovává přímo platformní `fitsSystemWindows` na kořenovém View místo vlastního `setOnApplyWindowInsetsListener`. Nepřepisujeme padding uvnitř insets callbacku během prvního vykreslení.
 - Zůstává nová adaptivní ikona a monochromatická notifikační ikona.
-- GitHub Actions navíc instaluje debug APK v emulátoru Androidu 15 a kontroluje úspěšné otevření hlavní obrazovky, přepnutí na grafy a opětovné otevření aplikace. Release se nesmí publikovat, pokud tento smoke test neprojde.
+- GitHub Actions navíc instaluje debug APK v emulátoru Androidu 15 a kontroluje úspěšné otevření hlavní obrazovky, přepnutí na grafy a opětovné otevření aplikace. Je-li na runneru dostupné KVM, musí tento smoke test projít. Bez KVM se test přeskočí; CI i tak povinně spouští Kotlin/JUnit testy a sestavení, ale nespouští UI na Androidu.
 - Beze změny zůstávají VIN a BLE vazba, databáze, 30denní retence, detekce regenerace a podepisovací klíč.
 
 ## Ověření v telefonu
