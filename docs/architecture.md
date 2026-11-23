@@ -39,3 +39,18 @@ Systém tvoří MainActivity (UI), AdapterPresenceService (Companion Device Mana
 **Export:** MainActivity spouští Android ACTION_CREATE_DOCUMENT a předává přidělený URI do background threadu. TelemetryDatabase exportZip() postupně zapisuje ZIP přímo do uživatelem vybraného OutputStreamu – telemetry.csv, communication.txt, events.csv, README.txt. Soubory se nemusí kopírovat na veřejnou cestu a aplikace nepotřebuje storage permissions. Export obsahuje případné VIN; jde o data lokálního vozidla.
 
 **Release:** build.gradle.kts přebírá verzi z release/version.txt, versionCode je monotonicky odvozený. Nový Versioned Android release workflow po změně verze sestavuje a testuje, vytváří GitHub Release se samostatným, verzovaným APK a SHA-256. Release APK musí být podepsané trvalým keystore v GitHub Secrets; bez něj se zveřejní výhradně označený testovací prerelease.
+
+
+## Recovery-first BLE architektura (1.0.3)
+
+- AdapterPresenceService: CDM appeared je budicí impuls, ale disappeared **nevolá stopService**. Je-li služba již aktivní, nový impuls urychlí reconnect.
+- PersistentAdapterScan: oslovuje BluetoothLeScanner se systémovým PendingIntent; explicitní neveřejný AdapterScanReceiver může obnovit proces i bez otevřené Activity a požádat o spuštění connectedDevice FGS. Při omezení startu Androidem loguje chybu. Scan se při vypnutí automatiky odregistruje.
+- BootReceiver: při BOOT_COMPLETED, MY_PACKAGE_REPLACED a přechodu Bluetooth do STATE_ON obnoví CDM pozorování, persistentní BLE scan a monitoring. Start může odmítnout OEM/Android, proto se výsledek zapisuje do diagnostiky.
+- AdapterDiscovery: před každým novým GATT spojením proběhne krátký aktivní scan známé MAC a jediného alternativního zařízení se shodným BLE jménem. Při více alternativách se nic nepřepáruje. Pokud reklama chybí, provede se pouze každý třetí pokus přímé GATT navázání původní MAC.
+- BleRecoveryPolicy: změna BLE adresy se neuloží bez dříve ověřeného a zcela shodného VIN. Toto ověřuje identitu vozidla, nikoli kryptograficky konkrétní dongle.
+- MonitorService: stav Hledám BLE / BLE připojeno, ECU spí / Monitoruji DPF je oddělen a perzistován, notifikace neoznačuje stará měření jako aktuální. Reconnect má vlastní akci ACTION_RECONNECT; vyvolá close předchozího GATT a probudí běžící worker.
+- BleElm: protokol a dekodér beze změny; callbacky opožděných GATT objektů se ignorují. Všechny GATT stavy a chyby se logují.
+- Backoff: při chybě exponeciálně do 30 sekund, s omezeným 7s aktivním BLE scanem; po znovunalezení zařízení žádné lidské párování. Sleep ECU neznamená ztrátu BLE.
+- Praktický požadavek: pro dlouhodobý automatický provoz je nutné na konkrétním Android telefonu povolit neomezené běžení na pozadí; systémové Force stop nemůže aplikace sama obejít.
+
+Podkladová analýza: [Incident 23.11.2026](incident-2026-11-23-ble-reconnect.md).
