@@ -246,6 +246,12 @@ class MonitorService : Service() {
                         store.event("VIN_RETRY", "Úplné VIN nyní nelze přečíst; zkusím znovu automaticky.")
                         throw IllegalStateException("ECU VIN not available; preserving adapter association")
                     }
+                    val previouslyVerifiedVin = store.vin
+                    if (candidate?.addressChanged == true &&
+                        !BleRecoveryPolicy.canPromoteAddress(previouslyVerifiedVin, vin, true)) {
+                        store.appendDiagnostic("SCAN candidate rejected: address change without pre-existing VIN match")
+                        throw SecurityException("Unverified BLE address changed before vehicle identity established")
+                    }
                     if (store.vin == null) {
                         store.vin = vin
                         store.event("BOUND", "Vozidlo ověřeno pomocí VIN (pouze lokálně).")
