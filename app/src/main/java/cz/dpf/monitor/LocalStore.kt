@@ -16,6 +16,23 @@ class LocalStore(context: Context) {
         get() = p.getString("adapter", null)
         set(value) { p.edit().putString("adapter", value).apply() }
 
+    var adapterName: String?
+        get() = p.getString("adapter_name", null)
+        set(value) { p.edit().putString("adapter_name", value).apply() }
+
+    var linkState: String
+        get() = p.getString("link_state", "NEZNÁMÝ") ?: "NEZNÁMÝ"
+        set(value) { p.edit().putString("link_state", value).apply() }
+
+    var linkUpdatedAt: Long
+        get() = p.getLong("link_updated", 0L)
+        set(value) { p.edit().putLong("link_updated", value).apply() }
+
+    fun updateLink(state: String) {
+        p.edit().putString("link_state", state)
+            .putLong("link_updated", System.currentTimeMillis()).apply()
+    }
+
     var vin: String?
         get() = p.getString("vin", null)
         set(value) { p.edit().putString("vin", value).apply() }
