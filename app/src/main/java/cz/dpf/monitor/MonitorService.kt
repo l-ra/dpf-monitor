@@ -84,8 +84,14 @@ class MonitorService : Service() {
         if (Build.VERSION.SDK_INT >= 29)
             startForeground(SERVICE_ID, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         else startForeground(SERVICE_ID, note)
+        store.appendDiagnostic("SERVICE intent=" + (intent?.action ?: "STICKY_RESTART") +
+            " running=" + running.get())
         if (running.compareAndSet(false, true)) {
             worker = Thread({ monitorLoop() }, "dpf-ble-monitor").also { it.start() }
+        } else if (intent?.action == ACTION_AUTO) {
+            // Wake existing scan/backoff as soon as CDM or pending scan detects
+            // the adapter. Do not interrupt a healthy BLE session.
+            synchronized(retryLock) { retryLock.notifyAll() }
         } else if (intent?.action == ACTION_RECONNECT) {
             // Previously this menu action was a no-op when the worker was active.
             requestReconnect.set(true)
@@ -270,7 +276,7 @@ class MonitorService : Service() {
                         store.appendDiagnostic("BLE ADDRESS rotated: old=" + mac + ", new=" + target)
                         runCatching { PersistentAdapterScan.register(this) }
                     }
-                    store.adapterName = client.connectedName ?: store.adapterName ?: "OBDII"
+                    store.adapterName = client.connectedName?.takeIf { it.isNotBlank() } ?: store.adapterName ?: "OBDII"
                     store.setupComplete = true
                     engine.onTripVerified()?.let(::inform)
                     store.updateLink("Monitoruji DPF")
@@ -343,6 +349,7 @@ class MonitorService : Service() {
             engine.onConnectionLost()?.let(::inform)
             publish(engine, true)
             running.set(false)
+            store.appendDiagnostic("SERVICE monitor worker finished")
             stopSelf()
         }
     }
