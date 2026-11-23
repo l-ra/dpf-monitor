@@ -88,6 +88,7 @@ class MainActivity : Activity() {
         if (store.adapterAddress != null && store.autoEnabled && hasBluetoothPermissions()) {
             runCatching {
                 observe()
+                PersistentAdapterScan.register(this)
                 MonitorService.start(this)
             }.onFailure { store.event("START", "Automatický start selhal: " + it.message) }
         }
@@ -347,7 +348,7 @@ class MainActivity : Activity() {
                 else -> "Stav neznámý" to muted
             }
             values["phase"]?.apply { text = pair.first; setTextColor(pair.second) }
-            values["health"]?.text = if (stale) "Žádná čerstvá data" else
+            values["health"]?.text = if (stale) store.linkState else
                 "ECU online · poslední měření před " + age + " s"
             values["criterion"]?.text = if (stale) "— %" else decimal(state, "trigger", 0, " %")
             root.findViewWithTag<ProgressBar>("criterionBar")?.progress =
@@ -364,7 +365,7 @@ class MainActivity : Activity() {
             values["detail"]?.text = when {
                 store.adapterAddress == null -> "Přiřaď BLE adaptér v prvním nastavení."
                 !store.setupComplete -> "Připojuji adaptér a ověřuji identitu ECU."
-                stale -> "Poslední data jsou zastaralá. Čekám na spojení."
+                stale -> store.linkState + " · automatické obnovení probíhá"
                 else -> "Monitoring na pozadí · diagnostika se ukládá 30 dnů."
             }
         } else {
@@ -430,7 +431,11 @@ class MainActivity : Activity() {
                 item.title.toString().startsWith("Automatické") -> {
                     store.autoEnabled = !store.autoEnabled
                     if (store.autoEnabled) {
-                        runCatching { observe(); MonitorService.start(this) }
+                        runCatching {
+                            observe()
+                            PersistentAdapterScan.register(this)
+                            MonitorService.start(this)
+                        }
                             .onFailure { toast("Start monitoringu: " + it.message) }
                     } else {
                         runCatching {
@@ -439,12 +444,13 @@ class MainActivity : Activity() {
                                     .stopObservingDevicePresence(it)
                             }
                         }
+                        runCatching { PersistentAdapterScan.unregister(this) }
                         stopService(Intent(this, MonitorService::class.java))
                     }
                     toast(if (store.autoEnabled) "Automatické sledování zapnuto" else
                         "Automatické sledování vypnuto")
                 }
-                item.title.toString().startsWith("Znovu") -> runCatching { MonitorService.start(this) }
+                item.title.toString().startsWith("Znovu") -> runCatching { MonitorService.reconnect(this) }
                     .onFailure { toast("Spojení: " + it.message) }
                 item.title.toString().startsWith("Změnit") -> unpair()
                 item.title.toString().startsWith("Oprávnění") -> startActivity(
@@ -465,6 +471,7 @@ class MainActivity : Activity() {
             .setNegativeButton("Zrušit", null)
             .setPositiveButton("Pokračovat") { _, _ ->
                 stopService(Intent(this, MonitorService::class.java))
+                runCatching { PersistentAdapterScan.unregister(this) }
                 store.adapterAddress?.let { addr ->
                     runCatching {
                         val cdm = getSystemService(CompanionDeviceManager::class.java)
@@ -473,6 +480,7 @@ class MainActivity : Activity() {
                     }
                 }
                 store.adapterAddress = null
+                store.adapterName = null
                 store.vin = null
                 store.setupComplete = false
                 render()
@@ -601,10 +609,14 @@ class MainActivity : Activity() {
                 val mac = association?.deviceMacAddress?.toString() ?: device?.address
                 if (mac == null) { toast("BLE zařízení bez čitelné adresy"); return }
                 store.adapterAddress = mac
+                store.adapterName = runCatching { device?.name }.getOrNull() ?: "OBDII"
                 store.vin = null
                 store.setupComplete = false
                 store.autoEnabled = true
-                runCatching { observe() }.onFailure {
+                runCatching {
+                    observe()
+                    PersistentAdapterScan.register(this)
+                }.onFailure {
                     store.event("OBSERVE", "Sledování přítomnosti: " + it.message)
                 }
                 runCatching { MonitorService.start(this) }
