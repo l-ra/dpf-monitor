@@ -30,3 +30,12 @@ Veškerá měření, chyby, komunikace ELM327 i události se ukládají do soukr
 ## Omezení
 
 Aplikace je experimentální a používá pouze čtecí diagnostiku. Některé ELM327 adaptéry nedokončí vícerámcové ISO-TP odpovědi; bez ověřeného VIN se monitoring z bezpečnostních důvodů neaktivuje. Android ani Companion Device Manager negarantují absolutní spolehlivost na pozadí, zejména při omezeních výrobce nebo vypnutí Bluetooth. Odhady regenerace nejsou doporučením k řízení vozidla.
+
+
+## Automatické obnovení BLE (1.0.3)
+
+Po incidentu 22.–23.11.2026 se aplikace nespoléhá jen na změnu přítomnosti Companion Device Manager: při výpadku nechává foreground monitoring běžet, aktivně vyhledává BLE reklamy, před připojením kontroluje uloženou MAC a u jediného kandidáta se změněnou adresou vyžaduje úplnou shodu dříve uloženého VIN. Dále používá persistentní PendingIntent BLE scan pro probuzení procesu a poslouchá restart/aktivaci Bluetooth. V menu Znovu připojit nyní skutečně ukončí stávající GATT pokus a naváže nové spojení.
+
+Podrobnosti, skutečné chyby a akceptační scénáře: [Rozbor výpadku BLE z 23.11.2026](docs/incident-2026-11-23-ble-reconnect.md). Původní ZIP nebyl vložen do veřejného repozitáře, protože obsahuje VIN.
+
+Technicky není možné zaručit 100% automatické probuzení po Android Force stop, odnětí Bluetooth oprávnění nebo vypnutí napájení donglu. Android doporučuje Companion Device Manager a PendingIntent BLE scan pro background detekci, ale i zde platí omezení na start foreground service.
