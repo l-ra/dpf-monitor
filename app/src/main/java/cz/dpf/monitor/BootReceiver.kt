@@ -23,6 +23,7 @@ class BootReceiver : BroadcastReceiver() {
                 Intent.ACTION_MY_PACKAGE_REPLACED,
                 BluetoothAdapter.ACTION_STATE_CHANGED)) return
         val store = LocalStore(context)
+        store.appendDiagnostic("BOOT/BT state receiver action=" + action)
         if (!store.autoEnabled || store.adapterAddress == null) return
         if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) !=
             PackageManager.PERMISSION_GRANTED) return
