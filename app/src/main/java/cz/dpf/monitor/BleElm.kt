@@ -30,6 +30,8 @@ class BleElm(private val context: Context, private val logger: (String) -> Unit)
     private var ready = CountDownLatch(1)
     private var failure: String? = null
     private var currentHeader = ""
+    @Volatile var connectedName: String? = null
+        private set
     private val cb = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) failure = "GATT status=" + status
@@ -97,7 +99,8 @@ class BleElm(private val context: Context, private val logger: (String) -> Unit)
         gatt = device.connectGatt(context, false, cb, BluetoothDevice.TRANSPORT_LE)
         if (!ready.await(15, TimeUnit.SECONDS) || !connected || failure != null || tx == null)
             throw IllegalStateException("BLE connection failed: " + (failure ?: "timeout"))
-        logger("BLE GATT connected: " + (device.name ?: address))
+        connectedName = runCatching { device.name }.getOrNull()
+        logger("BLE GATT connected: " + (connectedName ?: "unknown"))
     }
     fun command(text: String, timeoutMs: Long = 6500): String {
         require(text.matches(Regex("[A-Za-z0-9]+"))) { "Illegal ELM command" }
@@ -186,6 +189,7 @@ class BleElm(private val context: Context, private val logger: (String) -> Unit)
         gatt = null
         tx = null
         currentHeader = ""
+        connectedName = null
         receive.clear()
     }
 }
