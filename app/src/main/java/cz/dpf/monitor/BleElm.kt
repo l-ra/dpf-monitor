@@ -34,6 +34,8 @@ class BleElm(private val context: Context, private val logger: (String) -> Unit)
         private set
     private val cb = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            if (gatt != null && gatt !== g) return // ignore obsolete GATT callbacks
+            logger("GATT state callback status=" + status + " newState=" + newState)
             if (status != BluetoothGatt.GATT_SUCCESS) failure = "GATT status=" + status
             if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                 connected = true
