@@ -78,15 +78,14 @@ class AdapterDiscovery(private val context: Context, private val log: (String) -
             runCatching { scanner.stopScan(callback) }
         }
         val found = synchronized(results) { results.values.toList() }
-        found.firstOrNull { !it.addressChanged }?.let { return it }
-        val candidates = found.filter { it.addressChanged }
-        if (candidates.size == 1) {
-            log("SCAN one possible new BLE address; VIN verification required")
-            return candidates.single()
+        val choice = BleRecoveryPolicy.chooseAddress(oldAddress, found.map { it.address })
+        if (choice != null) {
+            val match = found.first { it.address.equals(choice, true) }
+            if (match.addressChanged) log("SCAN unique new BLE candidate; VIN verification required")
+            return match
         }
-        if (candidates.size > 1) {
-            log("SCAN ambiguous: " + candidates.size + " candidates; no automatic address change")
-        } else if (failedCode == 0) log("SCAN no matching advertisements")
+        if (found.size > 1) log("SCAN ambiguous: " + found.size + " matching addresses")
+        else if (failedCode == 0) log("SCAN no matching advertisements")
         return null
     }
 }
