@@ -64,3 +64,14 @@ Nastav base64 a odpovídající hesla/alias. Keystore bezpečně zálohuj a nikd
 ## Diagnostika
 
 Pokud po prvním nastavení nefunguje ověření VIN, příčinou může být neúplná ISO-TP odpověď levného adaptéru. V takovém případě exportuj ZIP a porovnej komunikaci s logy webové PoC aplikace. V případě změny auta neobcházej kontrolu VIN ručním přepsáním identity.
+
+
+## Automatický reconnect po skončení jízdy (verze 1.0.3)
+
+Pokud po vypnutí zapalování ECU přestane odpovídat, aplikace nyní odděluje stav uspané ECU od ztráty BLE adaptéru a nevypíná monitorovací službu při pouhé CDM disappeared události. Když je adaptér příště dostupný, systémové BLE reklamy probudí aplikaci nebo již aktivní služba provede scan a reconnect.
+
+**Nepřiřazuj adaptér znovu**, pokud je v diagnostice jen dočasný timeout. Nejprve zkontroluj stav v notifikaci nebo na hlavní obrazovce. Položka ☰ → Znovu připojit nyní skutečně restartuje GATT session. Pokud se BLE adresa změnila, aplikace ji smí obnovit pouze při jediném kandidátovi a shodném VIN z ECU.
+
+Na Androidu povol aplikaci neomezený provoz na pozadí a zapnuté Bluetooth. Po restartu telefonu se registruje CDM i PendingIntent scan; explicitní Force stop jej však může do ručního otevření aplikace vyřadit. Vlastní nastavení baterie může ovlivnit dostupnost, proto proveď test další jízdy s uzamčeným telefonem a bez otevření aplikace.
+
+Exporty obsahují VIN a přesné časy jízd: nepřidávej je do veřejného GitHubu. Při diagnostice chyb postačuje sdílet ZIP soukromě.
